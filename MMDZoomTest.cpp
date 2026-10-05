@@ -1,0 +1,102 @@
+#define UNICODE
+#define _UNICODE
+#include <windows.h>
+#include <commctrl.h>
+#include <cwchar>
+
+#pragma comment(lib, "comctl32.lib")
+
+namespace {
+constexpr int IDC_FOV_SLIDER = 1001;
+constexpr int IDC_FOV_VALUE  = 1002;
+constexpr int IDC_STATUS     = 1003;
+constexpr int MMD_FOV_ID     = 448;
+constexpr int FOV_MIN        = 1;
+constexpr int FOV_MAX        = 125;
+
+HWND g_slider=nullptr, g_value=nullptr, g_status=nullptr;
+struct FindCtx { HWND edit=nullptr; };
+
+BOOL CALLBACK FindFovProc(HWND hwnd, LPARAM lp) {
+    auto* ctx=reinterpret_cast<FindCtx*>(lp);
+    if (GetDlgCtrlID(hwnd)!=MMD_FOV_ID) return TRUE;
+    wchar_t cls[64]{};
+    GetClassNameW(hwnd,cls,64);
+    if (_wcsicmp(cls,L"Edit")==0) { ctx->edit=hwnd; return FALSE; }
+    return TRUE;
+}
+HWND FindMmdWindow() {
+    struct Ctx { HWND found=nullptr; } ctx;
+    EnumWindows([](HWND hwnd, LPARAM lp)->BOOL {
+        auto* c=reinterpret_cast<Ctx*>(lp);
+        if (!IsWindowVisible(hwnd)) return TRUE;
+        wchar_t title[512]{};
+        GetWindowTextW(hwnd,title,512);
+        if (wcsstr(title,L"MikuMikuDance") || wcsstr(title,L"MikuMikuDance.exe")) {
+            FindCtx fc;
+            EnumChildWindows(hwnd,FindFovProc,reinterpret_cast<LPARAM>(&fc));
+            if (fc.edit) { c->found=hwnd; return FALSE; }
+        }
+        return TRUE;
+    },reinterpret_cast<LPARAM>(&ctx));
+    return ctx.found;
+}
+HWND FindFovEdit(HWND mmd) {
+    FindCtx ctx;
+    EnumChildWindows(mmd,FindFovProc,reinterpret_cast<LPARAM>(&ctx));
+    return ctx.edit;
+}
+bool ApplyFov(int fov) {
+    HWND mmd=FindMmdWindow();
+    if (!mmd) { SetWindowTextW(g_status,L"MMD 9.32 のFOV欄を検出できません"); return false; }
+    HWND edit=FindFovEdit(mmd);
+    if (!edit) { SetWindowTextW(g_status,L"FOV欄 (ID 448) を検出できません"); return false; }
+    wchar_t buf[16]{};
+    swprintf_s(buf,L"%d",fov);
+    if (!SendMessageW(edit,WM_SETTEXT,0,reinterpret_cast<LPARAM>(buf))) {
+        SetWindowTextW(g_status,L"FOV欄への書き込みに失敗しました"); return false;
+    }
+    SendMessageW(edit,WM_KEYDOWN,VK_RETURN,0);
+    SetWindowTextW(g_status,L"MMDへFOVを送信しました（キー登録はしません）");
+    return true;
+}
+void UpdateValue(int fov) {
+    wchar_t buf[32]{};
+    swprintf_s(buf,L"FOV : %d deg",fov);
+    SetWindowTextW(g_value,buf);
+}
+LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
+    switch(msg) {
+    case WM_CREATE:
+        CreateWindowW(L"STATIC",L"MMD Zoom Test - FOV only",WS_CHILD|WS_VISIBLE,18,15,300,24,hwnd,nullptr,nullptr,nullptr);
+        g_slider=CreateWindowW(TRACKBAR_CLASSW,L"",WS_CHILD|WS_VISIBLE|TBS_AUTOTICKS,18,48,330,45,hwnd,reinterpret_cast<HMENU>(IDC_FOV_SLIDER),nullptr,nullptr);
+        SendMessageW(g_slider,TBM_SETRANGE,TRUE,MAKELPARAM(FOV_MIN,FOV_MAX));
+        SendMessageW(g_slider,TBM_SETTICFREQ,10,0);
+        SendMessageW(g_slider,TBM_SETPOS,TRUE,30);
+        g_value=CreateWindowW(L"STATIC",L"FOV : 30 deg",WS_CHILD|WS_VISIBLE,18,100,180,24,hwnd,reinterpret_cast<HMENU>(IDC_FOV_VALUE),nullptr,nullptr);
+        g_status=CreateWindowW(L"STATIC",L"スライダー操作でMMDへ送信します。キー登録はしません。",WS_CHILD|WS_VISIBLE,18,132,355,44,hwnd,reinterpret_cast<HMENU>(IDC_STATUS),nullptr,nullptr);
+        return 0;
+    case WM_HSCROLL:
+        if (reinterpret_cast<HWND>(lp)==g_slider) {
+            int fov=static_cast<int>(SendMessageW(g_slider,TBM_GETPOS,0,0));
+            UpdateValue(fov); ApplyFov(fov);
+        }
+        return 0;
+    case WM_DESTROY: PostQuitMessage(0); return 0;
+    }
+    return DefWindowProcW(hwnd,msg,wp,lp);
+}
+}
+int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,PWSTR,int show) {
+    INITCOMMONCONTROLSEX icc{sizeof(icc),ICC_BAR_CLASSES}; InitCommonControlsEx(&icc);
+    const wchar_t* kClass=L"MMDZoomTestWindow";
+    WNDCLASSW wc{}; wc.lpfnWndProc=WndProc; wc.hInstance=inst; wc.lpszClassName=kClass;
+    wc.hCursor=LoadCursor(nullptr,IDC_ARROW); wc.hbrBackground=reinterpret_cast<HBRUSH>(COLOR_WINDOW+1);
+    if(!RegisterClassW(&wc)) return 1;
+    HWND hwnd=CreateWindowExW(0,kClass,L"MMD Zoom Test 0.1",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,
+        CW_USEDEFAULT,CW_USEDEFAULT,400,225,nullptr,nullptr,inst,nullptr);
+    if(!hwnd) return 2;
+    ShowWindow(hwnd,show); UpdateWindow(hwnd);
+    MSG msg{}; while(GetMessageW(&msg,nullptr,0,0)>0){TranslateMessage(&msg);DispatchMessageW(&msg);}
+    return static_cast<int>(msg.wParam);
+}
