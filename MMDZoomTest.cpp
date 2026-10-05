@@ -48,16 +48,16 @@ HWND FindFovEdit(HWND mmd) {
 }
 bool ApplyFov(int fov) {
     HWND mmd=FindMmdWindow();
-    if (!mmd) { SetWindowTextW(g_status,L"MMD 9.32 のFOV欄を検出できません"); return false; }
+    if (!mmd) { SetWindowTextW(g_status,L"MMD 9.32 FOV control not found"); return false; }
     HWND edit=FindFovEdit(mmd);
-    if (!edit) { SetWindowTextW(g_status,L"FOV欄 (ID 448) を検出できません"); return false; }
+    if (!edit) { SetWindowTextW(g_status,L"FOV control (ID 448) not found"); return false; }
     wchar_t buf[16]{};
     swprintf_s(buf,L"%d",fov);
     if (!SendMessageW(edit,WM_SETTEXT,0,reinterpret_cast<LPARAM>(buf))) {
-        SetWindowTextW(g_status,L"FOV欄への書き込みに失敗しました"); return false;
+        SetWindowTextW(g_status,L"Failed to write FOV"); return false;
     }
     SendMessageW(edit,WM_KEYDOWN,VK_RETURN,0);
-    SetWindowTextW(g_status,L"MMDへFOVを送信しました（キー登録はしません）");
+    SetWindowTextW(g_status,L"FOV sent to MMD (no camera key registered)");
     return true;
 }
 void UpdateValue(int fov) {
@@ -74,7 +74,7 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         SendMessageW(g_slider,TBM_SETTICFREQ,10,0);
         SendMessageW(g_slider,TBM_SETPOS,TRUE,30);
         g_value=CreateWindowW(L"STATIC",L"FOV : 30 deg",WS_CHILD|WS_VISIBLE,18,100,180,24,hwnd,reinterpret_cast<HMENU>(IDC_FOV_VALUE),nullptr,nullptr);
-        g_status=CreateWindowW(L"STATIC",L"スライダー操作でMMDへ送信します。キー登録はしません。",WS_CHILD|WS_VISIBLE,18,132,355,44,hwnd,reinterpret_cast<HMENU>(IDC_STATUS),nullptr,nullptr);
+        g_status=CreateWindowW(L"STATIC",L"Move slider to send FOV to MMD. No camera key is registered.",WS_CHILD|WS_VISIBLE,18,132,355,44,hwnd,reinterpret_cast<HMENU>(IDC_STATUS),nullptr,nullptr);
         return 0;
     case WM_HSCROLL:
         if (reinterpret_cast<HWND>(lp)==g_slider) {
