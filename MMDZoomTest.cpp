@@ -2,7 +2,9 @@
 #define _UNICODE
 #include <windows.h>
 #include <commctrl.h>
-#include <cwchar>\n#include <cmath>\n#include <algorithm>
+#include <cwchar>
+#include <cmath>
+#include <algorithm>
 
 #pragma comment(lib, "comctl32.lib")
 
@@ -12,7 +14,10 @@ constexpr int IDC_FOV_VALUE  = 1002;
 constexpr int IDC_STATUS     = 1003;
 constexpr int MMD_FOV_ID     = 448;
 constexpr int FOV_MIN        = 1;
-constexpr int FOV_MAX        = 125;\nconstexpr int ZOOM_MIN_TENTHS = 10;\nconstexpr int ZOOM_MAX_TENTHS = 100;\nconstexpr double REF_FOV_DEG = 45.0;
+constexpr int FOV_MAX        = 125;
+constexpr int ZOOM_MIN_TENTHS = 10;
+constexpr int ZOOM_MAX_TENTHS = 100;
+constexpr double REF_FOV_DEG = 45.0;
 
 HWND g_slider=nullptr, g_value=nullptr, g_status=nullptr;
 struct FindCtx { HWND edit=nullptr; };
