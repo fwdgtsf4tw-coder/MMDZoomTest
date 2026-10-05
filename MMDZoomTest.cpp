@@ -60,9 +60,16 @@ bool ApplyFov(int fov) {
     SetWindowTextW(g_status,L"FOV sent to MMD (no camera key registered)");
     return true;
 }
-void UpdateValue(int fov) {
-    wchar_t buf[32]{};
-    swprintf_s(buf,L"FOV : %d deg",fov);
+int ZoomToFov(int zoomTenths) {
+    const double zoom = zoomTenths / 10.0;
+    const double pi = 3.14159265358979323846;
+    const double ref = REF_FOV_DEG * pi / 180.0;
+    const double fov = 2.0 * std::atan(std::tan(ref / 2.0) / zoom) * 180.0 / pi;
+    return std::clamp(static_cast<int>(std::lround(fov)), FOV_MIN, FOV_MAX);
+}
+void UpdateValue(int zoomTenths, int fov) {
+    wchar_t buf[64]{};
+    swprintf_s(buf,L"ZOOM : %.1fx    FOV : %d deg",zoomTenths/10.0,fov);
     SetWindowTextW(g_value,buf);
 }
 LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
@@ -78,8 +85,9 @@ LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         return 0;
     case WM_HSCROLL:
         if (reinterpret_cast<HWND>(lp)==g_slider) {
-            int fov=static_cast<int>(SendMessageW(g_slider,TBM_GETPOS,0,0));
-            UpdateValue(fov); ApplyFov(fov);
+            int zoomTenths=static_cast<int>(SendMessageW(g_slider,TBM_GETPOS,0,0));
+            int fov=ZoomToFov(zoomTenths);
+            UpdateValue(zoomTenths,fov); ApplyFov(fov);
         }
         return 0;
     case WM_DESTROY: PostQuitMessage(0); return 0;
