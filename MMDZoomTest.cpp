@@ -2,7 +2,7 @@
 #define _UNICODE
 #include <windows.h>
 #include <commctrl.h>
-#include <cwchar>
+#include <cwchar>\n#include <cmath>\n#include <algorithm>
 
 #pragma comment(lib, "comctl32.lib")
 
@@ -12,7 +12,7 @@ constexpr int IDC_FOV_VALUE  = 1002;
 constexpr int IDC_STATUS     = 1003;
 constexpr int MMD_FOV_ID     = 448;
 constexpr int FOV_MIN        = 1;
-constexpr int FOV_MAX        = 125;
+constexpr int FOV_MAX        = 125;\nconstexpr int ZOOM_MIN_TENTHS = 10;\nconstexpr int ZOOM_MAX_TENTHS = 100;\nconstexpr double REF_FOV_DEG = 45.0;
 
 HWND g_slider=nullptr, g_value=nullptr, g_status=nullptr;
 struct FindCtx { HWND edit=nullptr; };
@@ -68,13 +68,13 @@ void UpdateValue(int fov) {
 LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE:
-        CreateWindowW(L"STATIC",L"MMD Zoom Test - FOV only",WS_CHILD|WS_VISIBLE,18,15,300,24,hwnd,nullptr,nullptr,nullptr);
+        CreateWindowW(L"STATIC",L"MMD Zoom Test - ZOOM to FOV",WS_CHILD|WS_VISIBLE,18,15,300,24,hwnd,nullptr,nullptr,nullptr);
         g_slider=CreateWindowW(TRACKBAR_CLASSW,L"",WS_CHILD|WS_VISIBLE|TBS_AUTOTICKS,18,48,330,45,hwnd,reinterpret_cast<HMENU>(IDC_FOV_SLIDER),nullptr,nullptr);
-        SendMessageW(g_slider,TBM_SETRANGE,TRUE,MAKELPARAM(FOV_MIN,FOV_MAX));
+        SendMessageW(g_slider,TBM_SETRANGE,TRUE,MAKELPARAM(ZOOM_MIN_TENTHS,ZOOM_MAX_TENTHS));
         SendMessageW(g_slider,TBM_SETTICFREQ,10,0);
-        SendMessageW(g_slider,TBM_SETPOS,TRUE,30);
-        g_value=CreateWindowW(L"STATIC",L"FOV : 30 deg",WS_CHILD|WS_VISIBLE,18,100,180,24,hwnd,reinterpret_cast<HMENU>(IDC_FOV_VALUE),nullptr,nullptr);
-        g_status=CreateWindowW(L"STATIC",L"Move slider to send FOV to MMD. No camera key is registered.",WS_CHILD|WS_VISIBLE,18,132,355,44,hwnd,reinterpret_cast<HMENU>(IDC_STATUS),nullptr,nullptr);
+        SendMessageW(g_slider,TBM_SETPOS,TRUE,10);
+        g_value=CreateWindowW(L"STATIC",L"ZOOM : 1.0x    FOV : 45 deg",WS_CHILD|WS_VISIBLE,18,100,180,24,hwnd,reinterpret_cast<HMENU>(IDC_FOV_VALUE),nullptr,nullptr);
+        g_status=CreateWindowW(L"STATIC",L"ZOOM -> FOV test. No camera key is registered.",WS_CHILD|WS_VISIBLE,18,132,355,44,hwnd,reinterpret_cast<HMENU>(IDC_STATUS),nullptr,nullptr);
         return 0;
     case WM_HSCROLL:
         if (reinterpret_cast<HWND>(lp)==g_slider) {
@@ -93,7 +93,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,PWSTR,int show) {
     WNDCLASSW wc{}; wc.lpfnWndProc=WndProc; wc.hInstance=inst; wc.lpszClassName=kClass;
     wc.hCursor=LoadCursor(nullptr,IDC_ARROW); wc.hbrBackground=reinterpret_cast<HBRUSH>(COLOR_WINDOW+1);
     if(!RegisterClassW(&wc)) return 1;
-    HWND hwnd=CreateWindowExW(0,kClass,L"MMD Zoom Test 0.1",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,
+    HWND hwnd=CreateWindowExW(0,kClass,L"MMD Zoom Test 0.2",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,
         CW_USEDEFAULT,CW_USEDEFAULT,400,225,nullptr,nullptr,inst,nullptr);
     if(!hwnd) return 2;
     ShowWindow(hwnd,show); UpdateWindow(hwnd);
