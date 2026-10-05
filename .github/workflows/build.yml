@@ -1,0 +1,20 @@
+name: build-mmd-zoom-test
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build x64 Release
+        shell: cmd
+        run: |
+          call "%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+          msbuild MMDZoomTest.vcxproj /m /p:Configuration=Release /p:Platform=x64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MMDZoomTest-x64
+          path: x64/Release/MMDZoomTest.exe
+          if-no-files-found: error
