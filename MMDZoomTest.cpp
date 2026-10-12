@@ -15,9 +15,10 @@ constexpr int IDC_STATUS     = 1003;
 constexpr int MMD_FOV_ID     = 448;
 constexpr int FOV_MIN        = 1;
 constexpr int FOV_MAX        = 125;
-constexpr int ZOOM_MIN_TENTHS = 10;
-constexpr int ZOOM_MAX_TENTHS = 100;
-constexpr double REF_FOV_DEG = 45.0;
+constexpr int SLIDER_FOV_MIN = 5;
+constexpr int SLIDER_FOV_MAX = 45;
+constexpr double SENSOR_DIAGONAL_MM = 11.0;
+constexpr double SENSOR_WIDTH_MM = SENSOR_DIAGONAL_MM * 16.0 / std::sqrt(16.0*16.0 + 9.0*9.0);
 
 HWND g_slider=nullptr, g_value=nullptr, g_status=nullptr;
 struct FindCtx { HWND edit=nullptr; };
@@ -65,34 +66,32 @@ bool ApplyFov(int fov) {
     SetWindowTextW(g_status,L"FOV sent to MMD (no camera key registered)");
     return true;
 }
-int ZoomToFov(int zoomTenths) {
-    const double zoom = zoomTenths / 10.0;
+// Provisional focal length based on a 2/3-inch 16:9 sensor and horizontal FOV.
+double FovToFocalLength(int fov) {
     const double pi = 3.14159265358979323846;
-    const double ref = REF_FOV_DEG * pi / 180.0;
-    const double fov = 2.0 * std::atan(std::tan(ref / 2.0) / zoom) * 180.0 / pi;
-    return std::clamp(static_cast<int>(std::lround(fov)), FOV_MIN, FOV_MAX);
+    return SENSOR_WIDTH_MM / (2.0 * std::tan(fov * pi / 360.0));
 }
-void UpdateValue(int zoomTenths, int fov) {
-    wchar_t buf[64]{};
-    swprintf_s(buf,L"ZOOM : %.1fx    FOV : %d deg",zoomTenths/10.0,fov);
+void UpdateValue(int fov) {
+    wchar_t buf[96]{};
+    swprintf_s(buf,L"Focal length : %.1f mm    FOV : %d deg",FovToFocalLength(fov),fov);
     SetWindowTextW(g_value,buf);
 }
 LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE:
-        CreateWindowW(L"STATIC",L"MMD Zoom Test - ZOOM to FOV",WS_CHILD|WS_VISIBLE,18,15,300,24,hwnd,nullptr,nullptr,nullptr);
+        CreateWindowW(L"STATIC",L"MMD Zoom Test - Focal length / FOV",WS_CHILD|WS_VISIBLE,18,15,300,24,hwnd,nullptr,nullptr,nullptr);
         g_slider=CreateWindowW(TRACKBAR_CLASSW,L"",WS_CHILD|WS_VISIBLE|TBS_AUTOTICKS,18,48,330,45,hwnd,reinterpret_cast<HMENU>(IDC_FOV_SLIDER),nullptr,nullptr);
-        SendMessageW(g_slider,TBM_SETRANGE,TRUE,MAKELPARAM(ZOOM_MIN_TENTHS,ZOOM_MAX_TENTHS));
-        SendMessageW(g_slider,TBM_SETTICFREQ,10,0);
-        SendMessageW(g_slider,TBM_SETPOS,TRUE,10);
-        g_value=CreateWindowW(L"STATIC",L"ZOOM : 1.0x    FOV : 45 deg",WS_CHILD|WS_VISIBLE,18,100,180,24,hwnd,reinterpret_cast<HMENU>(IDC_FOV_VALUE),nullptr,nullptr);
-        g_status=CreateWindowW(L"STATIC",L"ZOOM -> FOV test. No camera key is registered.",WS_CHILD|WS_VISIBLE,18,132,355,44,hwnd,reinterpret_cast<HMENU>(IDC_STATUS),nullptr,nullptr);
+        SendMessageW(g_slider,TBM_SETRANGE,TRUE,MAKELPARAM(SLIDER_FOV_MIN,SLIDER_FOV_MAX));
+        SendMessageW(g_slider,TBM_SETTICFREQ,5,0);
+        SendMessageW(g_slider,TBM_SETPOS,TRUE,SLIDER_FOV_MAX);
+        g_value=CreateWindowW(L"STATIC",L"Focal length : 11.9 mm    FOV : 45 deg",WS_CHILD|WS_VISIBLE,18,100,350,24,hwnd,reinterpret_cast<HMENU>(IDC_FOV_VALUE),nullptr,nullptr);
+        g_status=CreateWindowW(L"STATIC",L"Left: wide / Right: tele. No camera key registered.",WS_CHILD|WS_VISIBLE,18,132,355,44,hwnd,reinterpret_cast<HMENU>(IDC_STATUS),nullptr,nullptr);
         return 0;
     case WM_HSCROLL:
         if (reinterpret_cast<HWND>(lp)==g_slider) {
-            int zoomTenths=static_cast<int>(SendMessageW(g_slider,TBM_GETPOS,0,0));
-            int fov=ZoomToFov(zoomTenths);
-            UpdateValue(zoomTenths,fov); ApplyFov(fov);
+            int sliderFov=static_cast<int>(SendMessageW(g_slider,TBM_GETPOS,0,0));
+            int fov=SLIDER_FOV_MAX + SLIDER_FOV_MIN - sliderFov;
+            UpdateValue(fov); ApplyFov(fov);
         }
         return 0;
     case WM_DESTROY: PostQuitMessage(0); return 0;
@@ -106,7 +105,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE,PWSTR,int show) {
     WNDCLASSW wc{}; wc.lpfnWndProc=WndProc; wc.hInstance=inst; wc.lpszClassName=kClass;
     wc.hCursor=LoadCursor(nullptr,IDC_ARROW); wc.hbrBackground=reinterpret_cast<HBRUSH>(COLOR_WINDOW+1);
     if(!RegisterClassW(&wc)) return 1;
-    HWND hwnd=CreateWindowExW(0,kClass,L"MMD Zoom Test 0.2",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,
+    HWND hwnd=CreateWindowExW(WS_EX_TOPMOST,kClass,L"MMD Zoom Test 0.3",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,
         CW_USEDEFAULT,CW_USEDEFAULT,400,225,nullptr,nullptr,inst,nullptr);
     if(!hwnd) return 2;
     ShowWindow(hwnd,show); UpdateWindow(hwnd);
