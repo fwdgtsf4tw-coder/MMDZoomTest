@@ -18,7 +18,7 @@ constexpr int FOV_MAX        = 125;
 constexpr int SLIDER_FOV_MIN = 5;
 constexpr int SLIDER_FOV_MAX = 45;
 constexpr double SENSOR_DIAGONAL_MM = 11.0;
-constexpr double SENSOR_WIDTH_MM = SENSOR_DIAGONAL_MM * 16.0 / std::sqrt(16.0*16.0 + 9.0*9.0);
+const double SENSOR_WIDTH_MM = SENSOR_DIAGONAL_MM * 16.0 / std::sqrt(16.0*16.0 + 9.0*9.0);
 
 HWND g_slider=nullptr, g_value=nullptr, g_status=nullptr;
 struct FindCtx { HWND edit=nullptr; };
